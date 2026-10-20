@@ -1,0 +1,8 @@
+node_modules/
+dist/
+contracts/out/
+contracts/cache/
+broadcast/
+.env*
+.arc-studio/
+*.key
