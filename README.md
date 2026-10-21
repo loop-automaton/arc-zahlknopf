@@ -28,6 +28,16 @@ USDC-Zahlknopf mit festem Split auf [Arc](https://arc.io) (Circles Layer 1). Ein
 | Deploy-Tx | [`0x1003b853…cfe0a`](https://explorer.testnet.arc.io/tx/0x1003b853da77eef626d1fa263eb8f21780024dbc957a40b129f68fe1220cfe0a) (Foundry `forge create`) |
 | Testzahlung 1 USDC | [`0x82c29df6…5212d`](https://explorer.testnet.arc.io/tx/0x82c29df6e47c64e0a6dba71cfbded48679e0e527f6c3d31f26f986b27ef5212d) – 0,95 → Wallet, 0,05 → dEaD, Contract-Saldo danach 0 |
 
+## Mainnet-Build (Arc Mainnet, Chain 5042) – Branch `mainnet`
+> ⚠️ Echtes Geld. Kein Audit. Nur für den eigenen Test des Betreibers (1 USDC, Obergrenze 3 USDC pro Zahlung).
+
+- `bun run build:mainnet` baut eine getrennte UI nach `dist-mainnet/` (Pfad `/arc-zahlknopf/mainnet/`). Der Standard-Build bleibt die Testnet-Demo.
+- Der Contract wird **über diese UI** deployt und im injizierten Wallet (MetaMask, z. B. In-App-Browser) signiert. Arc Studio schreibt und testet nur auf Testnet; der Mainnet-Deploy läuft deshalb über die eigene App.
+- Fester Init-Code (Creation-Code + Konstruktor-Args `usdc = 0x3600000000000000000000000000000000000000`, `recipients = [0x713B265c525f5aED566A014DcE7E00d3197dA106]`, `shares = [10000]`) in `src/mainnet-deploy.ts`. Empfänger sind fest eingebaut, es gibt kein Eingabefeld.
+- **Init-Code-Hash (keccak256): `0xbecdcba40f6e52c9f2ff4c7435b7217125c9ef5f7f23fdcff83e57efc87f2c55`**
+- Reproduzieren: `bun run verify:initcode` (erzeugt den Init-Code per `forge inspect` + `cast abi-encode` neu und vergleicht ihn Byte für Byte).
+- Nach dem Deploy prüft die UI `eth_getCode` (Runtime-Hash `0xf960295074a76b84e32eda31c86c9c223cd623a5b855abd9692908a3e45d560d`), `recipients()`, `shares()` und `usdc()`. Ohne bestandene Prüfung ist die Zahlung gesperrt. Approve immer exakt, nie unbegrenzt.
+
 ## Tests
 ```bash
 bun install --frozen-lockfile --ignore-scripts   # OpenZeppelin 5.1.0 kommt aus node_modules
@@ -64,6 +74,9 @@ USDC pay button with a fixed split on [Arc](https://arc.io) (Circle's Layer 1). 
 
 ### Deployment (Arc Testnet)
 Contract `ZahlknopfSplit` at [`0x45364c0e727Fb6DEB933bD108c361a0F6413aEA8`](https://explorer.testnet.arc.io/address/0x45364c0e727Fb6DEB933bD108c361a0F6413aEA8), chain ID `5042002`, USDC `0x3600000000000000000000000000000000000000`. Demo split: 5 % to `0x…dEaD`, 95 % to the operator's throwaway testnet wallet `0x800600637acE0c5afA6fa09c987D246Cf52C351b` (last recipient, gets the rounding remainder). Deployed with Foundry (`forge create`), [deploy tx](https://explorer.testnet.arc.io/tx/0x1003b853da77eef626d1fa263eb8f21780024dbc957a40b129f68fe1220cfe0a); [1 USDC test payment](https://explorer.testnet.arc.io/tx/0x82c29df6e47c64e0a6dba71cfbded48679e0e527f6c3d31f26f986b27ef5212d).
+
+### Mainnet build (Arc mainnet, chain 5042) – branch `mainnet`
+Real money, not audited. `bun run build:mainnet` builds a separate UI into `dist-mainnet/`; the default build stays the testnet demo. The contract is deployed **through this UI** and signed in the injected wallet; Arc Studio only writes and tests on testnet, so the mainnet deploy goes through our own app. Fixed init code (USDC `0x3600…0000`, recipients `[0x713B265c525f5aED566A014DcE7E00d3197dA106]`, shares `[10000]`) lives in `src/mainnet-deploy.ts`. **Init code hash: `0xbecdcba40f6e52c9f2ff4c7435b7217125c9ef5f7f23fdcff83e57efc87f2c55`**; reproduce with `bun run verify:initcode`. After deployment the UI checks code hash, `recipients()`, `shares()` and `usdc()` before enabling the exact approve and `pay()` (max 3 USDC).
 
 ### Tests
 `bun install --frozen-lockfile --ignore-scripts && forge test` – 28 tests, all passing (Foundry 1.8.5).

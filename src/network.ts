@@ -6,8 +6,20 @@
  *
  * Gesteuert über VITE_NETWORK ("testnet" | "mainnet"). Alles andere fällt auf Testnet zurück.
  */
-import type { Address } from 'viem'
-import { arc, arcTestnet } from 'viem/chains'
+import { defineChain, type Address } from 'viem'
+import { arcTestnet } from 'viem/chains'
+
+/**
+ * Arc Mainnet nur mit den offiziellen Daten aus docs.arc.io (ein RPC, ein Explorer).
+ * Diese Werte gehen auch in wallet_addEthereumChain.
+ */
+export const arcMainnet = defineChain({
+  id: 5042,
+  name: 'Arc',
+  nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
+  rpcUrls: { default: { http: ['https://rpc.mainnet.arc.io'] } },
+  blockExplorers: { default: { name: 'Arc Explorer', url: 'https://explorer.arc.io' } },
+})
 
 export type NetworkKind = 'testnet' | 'mainnet'
 
@@ -15,17 +27,18 @@ export const NETWORK: NetworkKind = import.meta.env.VITE_NETWORK === 'mainnet' ?
 export const IS_MAINNET = NETWORK === 'mainnet'
 
 /**
- * PLATZHALTER – MAINNET-SPLIT NOCH NICHT DEPLOYT.
- * Vor dem Mainnet-Build durch die echte ZahlknopfSplit-Adresse ersetzen (nach Deploy + Prüfung
- * von recipients()/shares()/usdc() und Bytecode). Solange hier die Null-Adresse steht, sperrt die
- * UI jede Zahlung.
+ * PLATZHALTER – MAINNET-SPLIT NOCH NICHT FEST EINGETRAGEN.
+ * Nach dem Deploy (über die UI) und der Prüfung von Code/recipients()/shares()/usdc() in einem kleinen
+ * zweiten Commit durch die echte ZahlknopfSplit-Adresse ersetzen. Bis dahin nutzt die Mainnet-UI nur
+ * eine Adresse, die sie selbst aus dem Deploy-Receipt gelesen UND on-chain geprüft hat (localStorage);
+ * ohne geprüfte Adresse ist die Zahlung gesperrt.
  */
 export const MAINNET_SPLIT_PLACEHOLDER = '0x0000000000000000000000000000000000000000' as Address
 
 const TESTNET_SPLIT = '0x45364c0e727Fb6DEB933bD108c361a0F6413aEA8' as Address
 
 interface NetworkConfig {
-  chain: typeof arc | typeof arcTestnet
+  chain: typeof arcMainnet | typeof arcTestnet
   label: string
   rpcUrl: string
   explorerBase: string
@@ -44,7 +57,7 @@ const CONFIGS: Record<NetworkKind, NetworkConfig> = {
     maxAmountUsdc: null,
   },
   mainnet: {
-    chain: arc, // 5042
+    chain: arcMainnet, // 5042
     label: 'Arc Mainnet',
     rpcUrl: 'https://rpc.mainnet.arc.io',
     explorerBase: 'https://explorer.arc.io',

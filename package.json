@@ -12,7 +12,9 @@
     "contracts:test": "forge test",
     "build": "vite build",
     "build:mainnet": "vite build --mode mainnet",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "verify:initcode": "bash scripts/verify-initcode.sh",
+    "simulate:deploy": "bash scripts/simulate-deploy-flow.sh"
   },
   "dependencies": {
     "@openzeppelin/contracts": "5.1.0",
