@@ -27,13 +27,13 @@ export const NETWORK: NetworkKind = import.meta.env.VITE_NETWORK === 'mainnet' ?
 export const IS_MAINNET = NETWORK === 'mainnet'
 
 /**
- * PLATZHALTER – MAINNET-SPLIT NOCH NICHT FEST EINGETRAGEN.
- * Nach dem Deploy (über die UI) und der Prüfung von Code/recipients()/shares()/usdc() in einem kleinen
- * zweiten Commit durch die echte ZahlknopfSplit-Adresse ersetzen. Bis dahin nutzt die Mainnet-UI nur
- * eine Adresse, die sie selbst aus dem Deploy-Receipt gelesen UND on-chain geprüft hat (localStorage);
- * ohne geprüfte Adresse ist die Zahlung gesperrt.
+ * ZahlknopfSplit auf Arc Mainnet – fest eingetragen nach dem Deploy über die UI am 21.10.2026.
+ * Deploy-Tx 0xa960c239980fc667de014bc5609dc91437ff0f5c7db050a196dbd5df1bf8561c (Block 27099159, Nonce 0 von 0x713B…A106).
+ * Runtime-Code on-chain geprüft (keccak256 0xf960295074a76b84e32eda31c86c9c223cd623a5b855abd9692908a3e45d560d),
+ * ebenso recipients() = [0x713B265c525f5aED566A014DcE7E00d3197dA106], shares() = [10000], usdc() = 0x3600…0000.
+ * Die UI prüft Code, recipients(), shares() und usdc() trotzdem bei jedem Laden erneut, bevor sie Zahlungen freigibt.
  */
-export const MAINNET_SPLIT_PLACEHOLDER = '0x0000000000000000000000000000000000000000' as Address
+export const MAINNET_SPLIT = '0xe09CaEC67CB6b5947136038f4e442a0B125C9389' as Address
 
 const TESTNET_SPLIT = '0x45364c0e727Fb6DEB933bD108c361a0F6413aEA8' as Address
 
@@ -61,7 +61,7 @@ const CONFIGS: Record<NetworkKind, NetworkConfig> = {
     label: 'Arc Mainnet',
     rpcUrl: 'https://rpc.mainnet.arc.io',
     explorerBase: 'https://explorer.arc.io',
-    splitAddress: MAINNET_SPLIT_PLACEHOLDER,
+    splitAddress: MAINNET_SPLIT,
     maxAmountUsdc: '3',
   },
 }
