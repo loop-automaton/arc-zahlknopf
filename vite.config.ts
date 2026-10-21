@@ -3,10 +3,14 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 import { nodePolyfills } from 'vite-plugin-node-polyfills'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   // GitHub Pages project site: https://loop-automaton.github.io/arc-zahlknopf/
-  base: '/arc-zahlknopf/',
-  build: { outDir: 'dist', sourcemap: false },
+  // Mainnet-Build (bun run build:mainnet) landet getrennt in dist-mainnet/ unter /arc-zahlknopf/mainnet/,
+  // die Testnet-Demo (dist/) bleibt unverändert.
+  base: mode === 'mainnet' ? '/arc-zahlknopf/mainnet/' : '/arc-zahlknopf/',
+  build: { outDir: mode === 'mainnet' ? 'dist-mainnet' : 'dist', sourcemap: false },
+  // Netzwerk fest in den Build schreiben (keine .env-Datei nötig, siehe src/network.ts)
+  define: { 'import.meta.env.VITE_NETWORK': JSON.stringify(mode === 'mainnet' ? 'mainnet' : 'testnet') },
   plugins: [react(), nodePolyfills()],
   resolve: {
     alias: {
@@ -37,4 +41,4 @@ export default defineConfig({
   server: {
     host: '127.0.0.1',
   },
-})
+}))

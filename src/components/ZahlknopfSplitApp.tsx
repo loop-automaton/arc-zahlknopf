@@ -13,20 +13,24 @@ import {
 } from 'wagmi'
 import { ConnectKitButton } from 'connectkit'
 import { erc20Abi, type Address } from 'viem'
-import { arcTestnet } from 'viem/chains'
 import { ExternalLink, Loader2, CheckCircle2, AlertTriangle, Split } from 'lucide-react'
 import { getUsdc, buildTxExplorerUrl } from '@/onchain-facts'
+import { NET, IS_MAINNET, SPLIT_IS_PLACEHOLDER } from '@/network'
 import { Amount, parseAmount, formatAmount, usdcDecimalsFor } from '@/onchain-money'
 
 // ---------------------------------------------------------------------------
-// Contract config — deployed on Arc Testnet (chain 5042002)
+// Contract config — Arc Testnet (5042002, Standard) oder Arc Mainnet (5042), siehe src/network.ts
 // ---------------------------------------------------------------------------
-const CHAIN_ID = arcTestnet.id // 5042002
+const CHAIN_ID = NET.chain.id
 const USDC_FACT = getUsdc(CHAIN_ID)
-if (!USDC_FACT) throw new Error('USDC not found for Arc Testnet in onchain-facts')
+if (!USDC_FACT) throw new Error(`USDC not found for ${NET.label} in onchain-facts`)
 const USDC_ADDRESS = USDC_FACT.address as Address
+// USDC-ERC-20 auf Arc (Mainnet und Testnet identisch, 6 Dezimalen)
+if (USDC_ADDRESS.toLowerCase() !== '0x3600000000000000000000000000000000000000') {
+  throw new Error('Unerwartete USDC-Adresse – Abbruch')
+}
 
-const SPLIT_ADDRESS = '0x45364c0e727Fb6DEB933bD108c361a0F6413aEA8' as Address
+const SPLIT_ADDRESS = NET.splitAddress
 
 const SPLIT_ABI = [
   {
@@ -141,12 +145,14 @@ export default function ZahlknopfSplitApp() {
     abi: SPLIT_ABI,
     functionName: 'recipients',
     chainId: CHAIN_ID,
+    query: { enabled: !SPLIT_IS_PLACEHOLDER },
   })
   const { data: shares } = useReadContract({
     address: SPLIT_ADDRESS,
     abi: SPLIT_ABI,
     functionName: 'shares',
     chainId: CHAIN_ID,
+    query: { enabled: !SPLIT_IS_PLACEHOLDER },
   })
 
   // wagmi write hooks — approve
@@ -208,6 +214,10 @@ export default function ZahlknopfSplitApp() {
 
   const handlePay = () => {
     setError(null)
+    if (SPLIT_IS_PLACEHOLDER) {
+      setError(`Auf ${NET.label} ist noch kein Split-Vertrag eingetragen. Zahlung gesperrt.`)
+      return
+    }
     if (wrongChain) {
       switchChain({ chainId: CHAIN_ID })
       return
@@ -230,6 +240,11 @@ export default function ZahlknopfSplitApp() {
       return
     }
 
+    if (NET.maxAmountUsdc !== null && parsedAmount > parseAmount(CHAIN_ID, NET.maxAmountUsdc).raw) {
+      setError(`Höchstbetrag auf ${NET.label}: ${NET.maxAmountUsdc} USDC pro Zahlung.`)
+      return
+    }
+
     // Build a deterministic orderId from the ref or timestamp
     const refStr = orderRef.trim() || `zahlknopf-${Date.now()}`
     const encoder = new TextEncoder()
@@ -245,6 +260,7 @@ export default function ZahlknopfSplitApp() {
     setStep('approving')
 
     try {
+      // Exakter Approve: genau der eingegebene Betrag, nie unbegrenzt (kein maxUint256).
       writeApprove({
         address: USDC_ADDRESS,
         abi: erc20Abi,
@@ -265,12 +281,13 @@ export default function ZahlknopfSplitApp() {
 
   const buttonLabel = () => {
     if (!isConnected) return 'Wallet verbinden'
-    if (wrongChain) return 'Zu Arc Testnet wechseln'
+    if (wrongChain) return `Zu ${NET.label} wechseln`
     if (step === 'approving' && isApprovePending) return 'Freigabe bestätigen…'
     if (step === 'approving' && isApproveConfirming) return 'Freigabe wird bestätigt…'
     if (step === 'paying' && isPayPending) return 'Zahlung bestätigen…'
     if (step === 'paying' && isPayConfirming) return 'Zahlung wird bestätigt…'
-    return 'Mit USDC bezahlen'
+    if (SPLIT_IS_PLACEHOLDER) return 'Gesperrt: Vertrag fehlt'
+    return IS_MAINNET ? 'Mit echtem USDC bezahlen' : 'Mit USDC bezahlen'
   }
 
   return (
@@ -299,6 +316,26 @@ export default function ZahlknopfSplitApp() {
         <ConnectKitButton />
       </header>
 
+      {/* Netzwerk-Hinweis */}
+      {IS_MAINNET ? (
+        <div
+          role="alert"
+          className="flex items-start gap-2 px-4 py-3 text-sm font-semibold"
+          style={{ background: 'var(--danger)', color: '#fff' }}
+        >
+          <AlertTriangle className="size-4 mt-0.5 shrink-0" />
+          <span>
+            ARC MAINNET – ECHTES GELD. Zahlungen sind endgültig. Es wird genau der eingegebene Betrag freigegeben
+            (kein unbegrenzter Approve), höchstens {NET.maxAmountUsdc} USDC pro Zahlung. Kein Audit.
+            {SPLIT_IS_PLACEHOLDER && ' Split-Vertrag noch nicht deployt – Zahlungen sind gesperrt.'}
+          </span>
+        </div>
+      ) : (
+        <div className="px-4 py-2 text-xs text-center" style={{ background: 'rgba(18,45,69,0.06)', color: 'var(--ink-2)' }}>
+          Demo auf Arc Testnet – kein echtes Geld.
+        </div>
+      )}
+
       {/* Main */}
       <main className="flex-1 flex items-start justify-center px-4 pt-8 pb-16">
         <div className="w-full max-w-md flex flex-col gap-4">
@@ -314,7 +351,13 @@ export default function ZahlknopfSplitApp() {
               </p>
             </div>
             <div>
-              {recipients && shares
+              {SPLIT_IS_PLACEHOLDER
+                ? (
+                  <div className="px-5 py-4 text-sm" style={{ color: 'var(--danger)' }}>
+                    Platzhalter: Split-Vertrag auf {NET.label} noch nicht deployt.
+                  </div>
+                )
+                : recipients && shares
                 ? (recipients as Address[]).map((addr, i) => (
                     <RecipientRow
                       key={addr}
@@ -334,7 +377,7 @@ export default function ZahlknopfSplitApp() {
               <p className="text-xs mono" style={{ color: 'var(--subtle)' }}>
                 Vertrag:{' '}
                 <a
-                  href={`https://explorer.testnet.arc.io/address/${SPLIT_ADDRESS}`}
+                  href={`${NET.explorerBase}/address/${SPLIT_ADDRESS}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 underline"
@@ -371,7 +414,7 @@ export default function ZahlknopfSplitApp() {
                     <span className="text-xs font-medium" style={{ color: 'var(--subtle)' }}>USDC</span>
                     {address && (
                       <span className="text-xs" style={{ color: 'var(--subtle)' }}>
-                        Arc Testnet · {usdcDecimalsFor(CHAIN_ID) > 0 ? `${decimals} Dezimalstellen` : ''}
+                        {NET.label} · {usdcDecimalsFor(CHAIN_ID) > 0 ? `${decimals} Dezimalstellen` : ''}
                       </span>
                     )}
                   </div>
@@ -463,7 +506,7 @@ export default function ZahlknopfSplitApp() {
 
               {/* CTA */}
               <button
-                disabled={isLoading}
+                disabled={isLoading || SPLIT_IS_PLACEHOLDER}
                 onClick={handlePay}
                 className="w-full rounded-2xl py-4 text-sm font-semibold text-white transition-all hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
                 style={{ background: 'var(--accent)' }}

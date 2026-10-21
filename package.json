@@ -11,6 +11,7 @@
     "contracts:build": "forge build",
     "contracts:test": "forge test",
     "build": "vite build",
+    "build:mainnet": "vite build --mode mainnet",
     "preview": "vite preview"
   },
   "dependencies": {

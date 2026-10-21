@@ -6,3 +6,4 @@ broadcast/
 .env*
 .arc-studio/
 *.key
+dist-mainnet/
